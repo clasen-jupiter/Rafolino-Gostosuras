@@ -6,6 +6,8 @@ Web app para calcular custo, preço e produção dos doces da Rafolino Gostosura
 - Os dados ficam salvos **no próprio aparelho** (no navegador). Não tem servidor, banco de dados nem login.
 - Depois de aberto uma vez, funciona **sem internet**.
 - Dá para **instalar na tela inicial** como se fosse um aplicativo.
+- Gera a **lista de compras em PDF**, com preços, a partir do plano de fornadas (botão nas abas Fornadas e Compras). No celular abre o menu de compartilhar, para mandar pelo WhatsApp ou salvar.
+- No computador (janela a partir de ~820 px de largura), o menu vai para a lateral e as telas se dividem em colunas.
 
 ## Arquivos
 

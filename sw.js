@@ -1,6 +1,6 @@
 /* Service worker: guarda o app no aparelho para abrir sem internet.
    Ao publicar uma versão nova, aumente o número em VERSION. */
-const VERSION = "rafolino-v3";
+const VERSION = "rafolino-v5";
 const SHELL = [
   "./",
   "./index.html",
@@ -8,13 +8,19 @@ const SHELL = [
   "./app.js",
   "./manifest.webmanifest",
   "./icons/favicon-64.png",
+  "./icons/icon.svg",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
+const CDN_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "cdnjs.cloudflare.com"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(VERSION)
+      .then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: "reload" }))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (e) => {
@@ -30,22 +36,23 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // Arquivos do próprio app: busca na rede primeiro (pega atualizações), cai no cache se estiver offline.
+  // Arquivos do próprio app: sempre tenta a versão mais nova na rede
+  // (ignorando o cache do navegador); sem internet, usa a cópia guardada.
   if (url.origin === location.origin) {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: "no-cache" })
         .then((res) => { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); return res; })
-        .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
+        .catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match("./index.html")))
     );
     return;
   }
 
-  // Fontes do Google: cache primeiro.
-  if (url.hostname.endsWith("fonts.googleapis.com") || url.hostname.endsWith("fonts.gstatic.com")) {
+  // Fontes e biblioteca do PDF: cache primeiro (não mudam).
+  if (CDN_HOSTS.some((h) => url.hostname.endsWith(h))) {
     e.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {
         const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); return res;
-      }).catch(() => hit))
+      }))
     );
   }
 });

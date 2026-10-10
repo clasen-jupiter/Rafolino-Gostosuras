@@ -46,6 +46,7 @@
     ]
   };
 
+  const ICON_PDF = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 12v6M9.5 15.5 12 18l2.5-2.5"/></svg>`;
   const STORE_KEY = "rafolino-gostosuras-v1";
   const TAB_KEY = "rafolino-gostosuras-aba";
   const TITLES = { fornadas: "Fornadas", receitas: "Receitas", ingredientes: "Ingredientes", compras: "Compras" };
@@ -226,7 +227,10 @@
         <div class="cards-grid">
           ${cards || `<section class="card"><p class="empty">Nenhuma fornada no plano ainda.</p></section>`}
         </div>
-        <button class="btn primary block" type="button" data-act="fornada-add" ${S.produtos.length ? "" : "disabled"}>+ Adicionar fornada</button>
+        <div class="actions-row">
+          <button class="btn primary" type="button" data-act="fornada-add" ${S.produtos.length ? "" : "disabled"}>+ Adicionar fornada</button>
+          <button class="btn pink" type="button" data-act="pdf" ${S.fornadas.length ? "" : "disabled"}>${ICON_PDF} Lista de compras em PDF</button>
+        </div>
         ${S.produtos.length ? "" : `<p class="empty">Cadastre uma receita primeiro.</p>`}
       </div>
       </div>`;
@@ -360,6 +364,7 @@
           <div class="stat"><span class="label">Usado no plano</span><b>${brl(tot.usado)}</b></div>
           <div class="stat"><span class="label">Fica de estoque</span><b>${brl(tot.compra - tot.usado)}</b></div>
         </div>
+        <button class="btn pink block" type="button" data-act="pdf" ${L.length ? "" : "disabled"}>${ICON_PDF} Gerar PDF da lista</button>
       </section>
       <p class="lead side-note">Arredondado para embalagens inteiras, a partir do plano de fornadas.</p>
       </aside>
@@ -380,6 +385,144 @@
       }).join("") || `<section class="card"><p class="empty">O plano de fornadas está vazio.</p></section>`}
       </div></div>
       </div>`;
+  }
+
+  // ---------- PDF da lista de compras ----------
+  const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  let jspdfLoading = null;
+  function loadJsPDF() {
+    if (window.jspdf) return Promise.resolve(window.jspdf);
+    if (!jspdfLoading) {
+      jspdfLoading = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = JSPDF_URL;
+        s.onload = () => (window.jspdf ? resolve(window.jspdf) : reject(new Error("jsPDF")));
+        s.onerror = () => { jspdfLoading = null; reject(new Error("offline")); };
+        document.head.appendChild(s);
+      });
+    }
+    return jspdfLoading;
+  }
+
+  function toast(msg) {
+    clearTimeout(undoTimer); undoSnap = null;
+    $("#toastHost").innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span></div>`;
+    undoTimer = setTimeout(() => { $("#toastHost").innerHTML = ""; }, 4000);
+  }
+
+  async function gerarPDF(btn) {
+    const L = calcCompras();
+    if (!L.length) { toast("O plano de fornadas está vazio."); return; }
+    const old = btn.innerHTML;
+    btn.disabled = true; btn.textContent = "Gerando PDF…";
+    try {
+      const { jsPDF } = await loadJsPDF();
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const W = 210, M = 16, R = W - M;
+      const C = { ink: [45, 27, 78], muted: [122, 106, 147], pink: [255, 92, 147], yellow: [255, 210, 63], mint: [18, 99, 79], line: [230, 220, 239], bad: [184, 36, 90] };
+      const hoje = new Date();
+      const dataTxt = hoje.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+      let y = 0;
+
+      const header = () => {
+        doc.setFillColor(...C.yellow); doc.rect(0, 0, W, 30, "F");
+        doc.setFillColor(...C.pink); doc.roundedRect(M, 9, 40, 11, 4, 4, "F");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(15); doc.setTextColor(255, 255, 255);
+        doc.text("Rafolino", M + 20, 16.6, { align: "center" });
+        doc.setTextColor(...C.ink); doc.setFontSize(10); doc.text("Gostosuras", M + 43, 16.6);
+        doc.setFontSize(16); doc.text("Lista de compras", R, 15, { align: "right" });
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.text(dataTxt, R, 21, { align: "right" });
+        y = 40;
+      };
+      const ensure = (h) => { if (y + h > 280) { doc.addPage(); header(); } };
+      const sectionTitle = (t) => {
+        ensure(14);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(12); doc.setTextColor(...C.ink); doc.text(t, M, y);
+        y += 3; doc.setDrawColor(...C.ink); doc.setLineWidth(0.5); doc.line(M, y, R, y); y += 6;
+      };
+
+      header();
+
+      // Plano de fornadas
+      sectionTitle("Plano de fornadas");
+      doc.setFontSize(10);
+      for (const f of S.fornadas) {
+        const r = calcFornada(f); if (!r) continue;
+        ensure(7);
+        doc.setFont("helvetica", "normal"); doc.setTextColor(...C.ink);
+        doc.text(r.p.nome, M, y);
+        doc.setTextColor(...C.muted);
+        doc.text(`${num(f.n, f.n % 1 ? 1 : 0)} fornada${f.n === 1 ? "" : "s"}`, 128, y, { align: "right" });
+        doc.setTextColor(...C.ink); doc.setFont("helvetica", "bold");
+        doc.text(`${num(r.un)} ${r.p.venda}`, R, y, { align: "right" });
+        y += 6.5;
+      }
+      y += 4;
+
+      // Itens
+      sectionTitle("Comprar");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(...C.muted);
+      doc.text("ITEM", M + 8, y); doc.text("QUANTIDADE", 128, y, { align: "right" }); doc.text("PREÇO", R, y, { align: "right" });
+      y += 5;
+      let total = 0;
+      for (const x of L) {
+        const temAviso = x.i.min > 0 && x.compra + 1e-9 < x.i.min;
+        ensure(temAviso ? 13 : 9);
+        total += x.compra;
+        doc.setDrawColor(...C.ink); doc.setLineWidth(0.4); doc.roundedRect(M, y - 3.6, 4.2, 4.2, 0.8, 0.8, "S");
+        doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(...C.ink);
+        const nome = doc.splitTextToSize(x.i.nome, 80);
+        doc.text(nome, M + 8, y);
+        doc.text(`${num(x.pacotes)} × ${num(x.i.qtd)} ${x.i.un}`, 128, y, { align: "right" });
+        doc.setFont("helvetica", "bold"); doc.text(brl(x.compra), R, y, { align: "right" });
+        let h = 4.6 * nome.length;
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...C.muted);
+        doc.text(`usa ${num(x.q, x.q % 1 ? 1 : 0)} ${x.i.un}${x.sobra > 0.0001 ? ` · sobra ${num(x.sobra, x.sobra % 1 ? 1 : 0)} ${x.i.un}` : ""}`, M + 8, y + h);
+        h += 4;
+        if (temAviso) {
+          doc.setTextColor(...C.bad);
+          doc.text(`Atenção: faltam ${brl(x.i.min - x.compra)} para o pedido mínimo de ${brl(x.i.min)}`, M + 8, y + h);
+          h += 4;
+        }
+        y += h + 2;
+        doc.setDrawColor(...C.line); doc.setLineWidth(0.3); doc.line(M, y - 2, R, y - 2);
+        y += 3;
+      }
+
+      // Total
+      ensure(22);
+      y += 2;
+      doc.setFillColor(...C.yellow); doc.roundedRect(M, y, R - M, 16, 4, 4, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...C.ink);
+      doc.text("Total estimado", M + 6, y + 10);
+      doc.setFontSize(16); doc.text(brl(total), R - 6, y + 10.5, { align: "right" });
+      y += 24;
+      ensure(10);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...C.muted);
+      doc.text("Preços estimados a partir dos valores cadastrados no app, arredondados para embalagens inteiras.", M, y);
+
+      // Rodapé com página
+      const pages = doc.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        doc.setPage(i); doc.setFontSize(8); doc.setTextColor(...C.muted);
+        doc.text(`Rafolino Gostosuras · página ${i} de ${pages}`, W / 2, 290, { align: "center" });
+      }
+
+      const nomeArq = `lista-de-compras-${hoje.toISOString().slice(0, 10)}.pdf`;
+      const blob = doc.output("blob");
+      const file = new File([blob], nomeArq, { type: "application/pdf" });
+      const touch = matchMedia("(pointer: coarse)").matches;
+      if (touch && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: "Lista de compras" }); }
+        catch (e) { if (e && e.name !== "AbortError") doc.save(nomeArq); }
+      } else {
+        doc.save(nomeArq);
+      }
+    } catch (e) {
+      toast("Não deu pra gerar o PDF. Na primeira vez precisa de internet.");
+    } finally {
+      btn.disabled = false; btn.innerHTML = old;
+    }
   }
 
   // ---------- eventos ----------
@@ -431,6 +574,9 @@
         if (f) f.n = Math.max(0, Math.round((f.n + parseFloat(t.dataset.d)) * 2) / 2);
         return changed();
       }
+      case "pdf":
+        gerarPDF(t);
+        return;
       case "fornada-add":
         S.fornadas.push({ id: uid("f"), prod: S.produtos[0].id, n: 1 });
         return changed();
