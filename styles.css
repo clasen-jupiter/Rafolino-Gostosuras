@@ -205,7 +205,64 @@ input.num { text-align: right; }
 }
 .toast button { border: 0; background: transparent; color: var(--yellow); font: 800 15px var(--f-body); cursor: pointer; padding: 6px 0; }
 
-@media (min-width: 700px) {
+/* ---------- estrutura das telas (celular: uma coluna, na ordem natural) ---------- */
+.split, .split-main, .side-premissas, .rec, .rec-body, .cards-grid { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.split-side, .rec-col { display: contents; }
+.side-summary, .side-note { order: 0; }
+.split-main { order: 1; }
+.side-premissas { order: 2; }
+.toolbar { display: flex; gap: 10px; align-items: center; }
+.desk-only { display: none !important; }
+
+/* tablet: barra de abas centralizada */
+@media (min-width: 700px) and (max-width: 959px) {
   .tabbar { left: 50%; right: auto; transform: translateX(-50%); width: 640px; border: 2px solid var(--ink); border-bottom: 0; border-radius: 22px 22px 0 0; }
+}
+
+/* ---------- computador: menu lateral e colunas ---------- */
+@media (min-width: 960px) {
+  body { padding-left: 232px; padding-bottom: 40px; }
+  .topbar { z-index: 30; margin-left: -232px; }
+  .topbar-inner { max-width: none; padding: 14px 32px 14px 24px; margin: 0; }
+  .screen-title { font-size: 24px; margin-left: auto; }
+
+  .tabbar {
+    top: 0; bottom: 0; left: 0; right: auto; width: 232px;
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 104px 14px 24px; border-top: 0; border-right: 2px solid var(--ink);
+  }
+  .tab { flex-direction: row; justify-content: flex-start; height: 54px; padding: 0 10px; gap: 12px; font-size: 16px; border-radius: 18px; }
+  .tab:hover { background: var(--bg); color: var(--ink); }
+  .tab svg { width: 24px; height: 24px; padding: 6px; }
+  .tab[aria-current="page"] { background: var(--yellow-soft); }
+
+  .screen { max-width: 1240px; padding: 28px 32px; gap: 20px; }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+  .split-main { grid-column: 1; grid-row: 1; gap: 20px; }
+  .split-side { display: flex; flex-direction: column; gap: 16px; grid-column: 2; grid-row: 1; position: sticky; top: 104px; }
+  .side-premissas { gap: 16px; }
+  .split-side .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split-side .stat b { white-space: normal; overflow: visible; }
+  .side-note { margin: 0; }
+
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+  .cards-grid.wide { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+
+  .rec { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .rec .chips { flex-direction: column; overflow: visible; margin: 0; padding: 0; position: sticky; top: 104px; }
+  .rec .chip { text-align: left; white-space: normal; border-radius: 18px; }
+  .rec-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+  .toolbar input { max-width: 420px; }
+  .desk-only { display: inline-flex !important; }
+  .mobile-only { display: none !important; }
+  .toast { bottom: 28px; left: calc(50% + 116px); }
+  .btn:hover, .chip:hover { filter: brightness(0.97); }
+}
+
+/* tela grande: ficha da receita em duas colunas */
+@media (min-width: 1280px) {
+  .rec-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

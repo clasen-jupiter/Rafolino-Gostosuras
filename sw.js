@@ -1,13 +1,13 @@
 /* Service worker: guarda o app no aparelho para abrir sem internet.
    Ao publicar uma versão nova, aumente o número em VERSION. */
-const VERSION = "rafolino-v1";
+const VERSION = "rafolino-v3";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./icons/icon.svg",
+  "./icons/favicon-64.png",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png"

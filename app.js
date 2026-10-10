@@ -195,7 +195,9 @@
       </section>`).join("");
 
     return `
-      <section class="card tint-mint">
+      <div class="split">
+      <aside class="split-side">
+      <section class="card tint-mint side-summary">
         <span class="label">Lucro bruto do plano</span>
         <div class="hero-num">${brl(lucro)}</div>
         <div class="stats">
@@ -205,11 +207,7 @@
         </div>
         <span class="muted">${num(T.un)} itens no total</span>
       </section>
-
-      ${cards || `<section class="card"><p class="empty">Nenhuma fornada no plano ainda.</p></section>`}
-      <button class="btn primary block" type="button" data-act="fornada-add" ${S.produtos.length ? "" : "disabled"}>+ Adicionar fornada</button>
-      ${S.produtos.length ? "" : `<p class="empty">Cadastre uma receita primeiro.</p>`}
-
+      <div class="side-premissas">
       <h2>Premissas</h2>
       <section class="card">
         <div class="grid2">
@@ -221,7 +219,17 @@
         <span class="muted" style="font-size:14px">O custo não inclui mão de obra, frete nem taxa de aplicativo. Os dados ficam salvos só neste aparelho.</span>
         ${pendingDelete === "reset:all" ? confirmBox("Voltar tudo para os valores iniciais?", "reset", "all", "Restaurar")
           : `<button class="btn ghost" type="button" data-act="del" data-kind="reset" data-id="all">Restaurar valores iniciais</button>`}
-      </section>`;
+      </section>
+      </div>
+      </aside>
+      <div class="split-main">
+        <div class="cards-grid">
+          ${cards || `<section class="card"><p class="empty">Nenhuma fornada no plano ainda.</p></section>`}
+        </div>
+        <button class="btn primary block" type="button" data-act="fornada-add" ${S.produtos.length ? "" : "disabled"}>+ Adicionar fornada</button>
+        ${S.produtos.length ? "" : `<p class="empty">Cadastre uma receita primeiro.</p>`}
+      </div>
+      </div>`;
   }
 
   // ----- Receitas -----
@@ -248,6 +256,7 @@
     if (p) {
       const c = calcProd(p);
       body = `
+        <div class="rec-col">
         <section class="card">
           <label class="field"><span class="label">Nome do produto</span>
             <input id="p-nome-${p.id}" value="${esc(p.nome)}" data-act="prod" data-k="nome" style="font-weight:800"></label>
@@ -266,7 +275,9 @@
           ${itemList(p, "itens")}
           <button class="btn" type="button" data-act="item-add" data-list="itens" ${S.ingredientes.length ? "" : "disabled"}>+ Ingrediente</button>
         </section>
+        </div>
 
+        <div class="rec-col">
         <section class="card">
           <div class="spread"><h3>Embalagem por unidade</h3><span class="muted">${brl(c.emb)}</span></div>
           ${itemList(p, "emb")}
@@ -286,11 +297,14 @@
           <button class="btn" type="button" data-act="prod-dup">Duplicar</button>
           <button class="btn danger" type="button" data-act="del" data-kind="prod" data-id="${p.id}">Apagar receita</button>
         </div>
-        ${pendingDelete === "prod:" + p.id ? confirmBox("Apagar esta receita e as fornadas dela?", "prod", p.id, "Apagar") : ""}`;
+        ${pendingDelete === "prod:" + p.id ? confirmBox("Apagar esta receita e as fornadas dela?", "prod", p.id, "Apagar") : ""}
+        </div>`;
     }
     return `
-      <div class="chips" role="group" aria-label="Receitas">${chips}<button class="chip add" type="button" data-act="prod-add">+ Nova</button></div>
-      ${body}`;
+      <div class="rec">
+        <div class="chips" role="group" aria-label="Receitas">${chips}<button class="chip add" type="button" data-act="prod-add">+ Nova</button></div>
+        <div class="rec-body">${body}</div>
+      </div>`;
   }
 
   // ----- Ingredientes -----
@@ -302,7 +316,11 @@
 
     return `
       <p class="lead">Preço da embalagem e quanto vem nela. O resto o app calcula.</p>
-      <input id="busca" type="search" placeholder="Buscar ingrediente" value="${esc(busca)}" data-act="busca" aria-label="Buscar ingrediente">
+      <div class="toolbar">
+        <input id="busca" type="search" placeholder="Buscar ingrediente" value="${esc(busca)}" data-act="busca" aria-label="Buscar ingrediente">
+        <button class="btn primary desk-only" type="button" data-act="ing-add">+ Adicionar ingrediente</button>
+      </div>
+      <div class="cards-grid wide">
       ${list.map((i) => `
         <section class="card">
           <div class="ing-head">
@@ -324,7 +342,8 @@
             <div style="text-align:right"><b>${perUnit(i)}</b><br><span class="muted" style="font-size:13px">${usedIn(i.id) ? "em " + usedIn(i.id) + (usedIn(i.id) > 1 ? " receitas" : " receita") : "não usado"}</span></div>
           </div>
         </section>`).join("") || `<p class="empty">Nada encontrado.</p>`}
-      <button class="btn primary block" type="button" data-act="ing-add">+ Adicionar ingrediente</button>`;
+      </div>
+      <button class="btn primary block mobile-only" type="button" data-act="ing-add">+ Adicionar ingrediente</button>`;
   }
 
   // ----- Compras -----
@@ -332,7 +351,9 @@
     const L = calcCompras();
     const tot = L.reduce((a, x) => ({ compra: a.compra + x.compra, usado: a.usado + x.usado }), { compra: 0, usado: 0 });
     return `
-      <section class="card tint-yellow">
+      <div class="split">
+      <aside class="split-side">
+      <section class="card tint-yellow side-summary">
         <span class="label">Gasto no mercado</span>
         <div class="hero-num">${brl(tot.compra)}</div>
         <div class="stats" style="grid-template-columns: repeat(2, minmax(0,1fr))">
@@ -340,7 +361,9 @@
           <div class="stat"><span class="label">Fica de estoque</span><b>${brl(tot.compra - tot.usado)}</b></div>
         </div>
       </section>
-      <p class="lead">Arredondado para embalagens inteiras, a partir do plano de fornadas.</p>
+      <p class="lead side-note">Arredondado para embalagens inteiras, a partir do plano de fornadas.</p>
+      </aside>
+      <div class="split-main"><div class="cards-grid">
       ${L.map((x) => {
         let aviso = "";
         if (x.i.min > 0) aviso = x.compra + 1e-9 >= x.i.min
@@ -354,7 +377,9 @@
           </div>
           ${aviso || x.sobra > 0.0001 ? `<div class="pills">${aviso}${x.sobra > 0.0001 ? `<span class="pill">sobra ${num(x.sobra, x.sobra % 1 ? 1 : 0)} ${esc(x.i.un)}</span>` : ""}</div>` : ""}
         </section>`;
-      }).join("") || `<section class="card"><p class="empty">O plano de fornadas está vazio.</p></section>`}`;
+      }).join("") || `<section class="card"><p class="empty">O plano de fornadas está vazio.</p></section>`}
+      </div></div>
+      </div>`;
   }
 
   // ---------- eventos ----------
